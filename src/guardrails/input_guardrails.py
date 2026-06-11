@@ -38,9 +38,18 @@ def detect_injection(user_input: str) -> bool:
         True if injection detected, False otherwise
     """
     INJECTION_PATTERNS = [
-        # TODO: Add at least 5 regex patterns
-        # Example:
-        # r"ignore (all )?(previous|above) instructions",
+        r"ignore (all )?(previous|above|prior) (instructions|directives|rules)",
+        r"(forget|disregard|override) (all )?(previous|above|prior)? ?(instructions|rules|directives)",
+        r"\byou are now\b",
+        r"\b(system|developer) prompt\b",
+        r"reveal (your )?(instructions|prompt|config|configuration|secrets?)",
+        r"pretend (you are|to be)",
+        r"act as (a |an )?(unrestricted|uncensored|jailbroken)",
+        r"\bDAN\b",
+        r"(translate|convert|encode|output).*(instructions|system prompt|config|secrets?)",
+        r"(admin password|api key|database connection|string|credentials?)",
+        r"b[oỏ] qua.*h[uư][oớ]ng d[aẫ]n",
+        r"(m[aậ]t kh[aẩ]u|khóa api|system prompt)",
     ]
 
     for pattern in INJECTION_PATTERNS:
@@ -70,12 +79,13 @@ def topic_filter(user_input: str) -> bool:
     """
     input_lower = user_input.lower()
 
-    # TODO: Implement logic:
-    # 1. If input contains any blocked topic -> return True
-    # 2. If input doesn't contain any allowed topic -> return True
-    # 3. Otherwise -> return False (allow)
+    if not input_lower.strip():
+        return True
 
-    pass  # Replace with your implementation
+    if any(topic in input_lower for topic in BLOCKED_TOPICS):
+        return True
+
+    return not any(topic in input_lower for topic in ALLOWED_TOPICS)
 
 
 # ============================================================
@@ -135,7 +145,21 @@ class InputGuardrailPlugin(base_plugin.BasePlugin):
         #    - If True: increment blocked_count, return self._block_response("...")
         # 3. If both are False: return None (let message through)
 
-        pass  # Replace with your implementation
+        if detect_injection(text):
+            self.blocked_count += 1
+            return self._block_response(
+                "I cannot process requests that try to reveal hidden instructions, "
+                "credentials, or internal system details."
+            )
+
+        if topic_filter(text):
+            self.blocked_count += 1
+            return self._block_response(
+                "I can only help with VinBank banking topics such as accounts, "
+                "transfers, cards, loans, savings, and payments."
+            )
+
+        return None
 
 
 # ============================================================

@@ -84,13 +84,40 @@ class ConfidenceRouter:
         #      action="escalate", priority="high",
         #      requires_human=True, reason="Low confidence — escalating"
 
+        if action_type in HIGH_RISK_ACTIONS:
+            return RoutingDecision(
+                action="escalate",
+                confidence=confidence,
+                reason=f"High-risk action: {action_type}",
+                priority="high",
+                requires_human=True,
+            )
+
+        if confidence >= self.HIGH_THRESHOLD:
+            return RoutingDecision(
+                action="auto_send",
+                confidence=confidence,
+                reason="High confidence",
+                priority="low",
+                requires_human=False,
+            )
+
+        if confidence >= self.MEDIUM_THRESHOLD:
+            return RoutingDecision(
+                action="queue_review",
+                confidence=confidence,
+                reason="Medium confidence - needs review",
+                priority="normal",
+                requires_human=True,
+            )
+
         return RoutingDecision(
-            action="auto_send",
+            action="escalate",
             confidence=confidence,
-            reason="TODO: implement routing logic",
-            priority="low",
-            requires_human=False,
-        )  # TODO: Replace with implementation
+            reason="Low confidence - escalating",
+            priority="high",
+            requires_human=True,
+        )
 
 
 # ============================================================
@@ -109,27 +136,27 @@ class ConfidenceRouter:
 hitl_decision_points = [
     {
         "id": 1,
-        "name": "TODO: Name this decision point",
-        "trigger": "TODO: When does this trigger?",
-        "hitl_model": "TODO: human-in-the-loop / human-on-the-loop / human-as-tiebreaker",
-        "context_needed": "TODO: What does the reviewer need to see?",
-        "example": "TODO: Give a concrete example scenario",
+        "name": "High-value transfer approval",
+        "trigger": "A transfer request exceeds the customer's normal amount or the bank's high-value threshold.",
+        "hitl_model": "human-in-the-loop",
+        "context_needed": "Customer identity status, destination account, amount, fraud score, recent session messages, and risk flags.",
+        "example": "A customer asks the assistant to transfer 500,000,000 VND to a new beneficiary created minutes ago.",
     },
     {
         "id": 2,
-        "name": "TODO: Name this decision point",
-        "trigger": "TODO: When does this trigger?",
-        "hitl_model": "TODO: human-in-the-loop / human-on-the-loop / human-as-tiebreaker",
-        "context_needed": "TODO: What does the reviewer need to see?",
-        "example": "TODO: Give a concrete example scenario",
+        "name": "Ambiguous compliance or policy answer",
+        "trigger": "LLM-as-Judge gives medium safety, relevance, or accuracy scores on a regulated banking answer.",
+        "hitl_model": "human-as-tiebreaker",
+        "context_needed": "Original user question, draft response, judge scores, cited policy or FAQ source, and uncertainty notes.",
+        "example": "The assistant drafts an answer about early loan repayment penalties but cannot match the answer to a current policy entry.",
     },
     {
         "id": 3,
-        "name": "TODO: Name this decision point",
-        "trigger": "TODO: When does this trigger?",
-        "hitl_model": "TODO: human-in-the-loop / human-on-the-loop / human-as-tiebreaker",
-        "context_needed": "TODO: What does the reviewer need to see?",
-        "example": "TODO: Give a concrete example scenario",
+        "name": "Repeated attack or anomaly review",
+        "trigger": "A session has repeated injection attempts, rate-limit hits, or requests for secrets/internal systems.",
+        "hitl_model": "human-on-the-loop",
+        "context_needed": "Session timeline, matched guardrail rules, user account risk tier, IP/device metadata, and audit log excerpts.",
+        "example": "A user sends several prompts asking for the system prompt, admin credentials, and database connection string.",
     },
 ]
 
